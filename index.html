@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#110f19">
+<title>PlotHop</title>
+<link rel="stylesheet" href="styles.css?v=35">
+<script defer src="data.js?v=2.2"></script>
+<script defer src="demography.js?v=3"></script>
+<script defer src="region.js?v=2"></script>
+<script defer src="region-parcels.js?v=2"></script>
+<script defer src="circle-estimates.js?v=4"></script>
+<script defer src="walking.js?v=5"></script>
+<script defer src="peak.js?v=6"></script>
+<script defer src="parcel-fit.js?v=7"></script>
+<script defer src="building-retention.js?v=8"></script>
+<script defer src="expansion-sites.js?v=5"></script>
+<script defer src="expansion-walk.js?v=4"></script>
+<script defer src="access-audit.js?v=1"></script>
+<script defer src="access-links.js?v=1"></script>
+<script defer src="crossing-audit.js?v=1"></script>
+<script defer src="expansion-routing.js?v=11"></script>
+<script defer src="regional-coverage.js?v=2"></script>
+<script defer src="regional-coverage-model.js?v=2"></script>
+<script defer src="block-detour-audit.js?v=2"></script>
+<script defer src="block-distance-audit.js?v=2"></script>
+<script defer src="crossing-display.js?v=1"></script>
+<script defer src="search-residents.js?v=1"></script>
+<script defer src="app.js?v=48"></script>
+</head>
+<body>
+<header class="bar">
+  <div class="identity"><div><strong>PlotHop</strong><small>Miami · Miami Beach</small></div>
+    <button id="help-button" type="button" aria-label="How to use PlotHop" aria-haspopup="dialog">ⓘ</button>
+  </div>
+</header>
+<main>
+  <div class="layout">
+    <section class="map-panel" aria-label="Miami and Miami Beach map">
+      <div class="map-head">
+        <div class="radius-control" id="radius-control">
+          <label for="radius">Search radius</label>
+          <input id="radius" type="range" min="500" max="4000" step="100" value="1000">
+          <output for="radius" id="radius-value">1,000 ft</output>
+          <button id="jump-miami" class="quiet city-jump" type="button">Miami</button>
+          <button id="jump-beach" class="quiet city-jump" type="button">Miami Beach</button>
+        </div>
+        <button class="quiet" id="back" hidden>← Back to search</button>
+        <div class="map-key" id="map-key" data-mode="search">Candidate parcels</div>
+        <ul class="map-key walk-legend" id="walk-legend" aria-label="Walk coverage legend" hidden>
+          <li><span class="legend-route" aria-hidden="true"></span>Reachable paths (modeled)</li>
+          <li id="walk-legend-crossing"><label><input type="checkbox" id="show-walk-crossings" autocomplete="off"><span class="legend-crossing" aria-hidden="true"></span>Mapped crossing landings</label></li>
+          <li id="walk-legend-blocks"><span class="legend-blocks" aria-hidden="true"></span>Connected blocks (modeled)</li>
+          <li id="walk-legend-pending" hidden><label><input type="checkbox" id="show-pending-blocks" autocomplete="off"><span class="legend-pending" aria-hidden="true"></span>Unverified blocks</label></li>
+        </ul>
+        <ul class="map-key basemap-legend" aria-label="Basemap legend">
+          <li class="search-candidate-key"><span class="key-candidates" aria-hidden="true"></span>Candidate parcels</li>
+          <li><span class="key-roads" aria-hidden="true"><span class="key-major-roads"></span><span class="key-local-roads"></span></span>Roads</li>
+          <li><span class="key-water" aria-hidden="true"></span>Water</li>
+          <li><span class="key-parcels" aria-hidden="true"></span>Boundaries</li>
+        </ul>
+      </div>
+      <div class="map-view">
+        <svg id="map" viewBox="0 0 8000 5700" aria-label="Miami and Miami Beach streets and parcels" xmlns="http://www.w3.org/2000/svg">
+          <defs><clipPath id="search-clip"><circle id="clip-circle"/></clipPath></defs>
+          <rect x="-30000" y="-30000" width="60000" height="60000" fill="#171521"/>
+          <path id="water"/><path id="local-roads"/><path id="major-roads"/><g id="regional-parcels"/><path id="parcel-context" hidden=""/>
+          <g id="search-layer">
+            <circle id="search-circle" tabindex="0" aria-label="Search circle. Use arrow keys to move it."/>
+            <g id="candidate-layer" clip-path="url(#search-clip)"></g>
+            <g id="count-points" hidden=""></g>
+            <path id="circle-handle" aria-hidden="true"/>
+          </g>
+          <g id="walk-layer"></g>
+          <g id="folio-map-comparison"></g>
+        </svg>
+        <div class="map-controls" aria-label="Map zoom"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button></div>
+        <div class="map-scale" aria-label="Map scale"><span id="scale-label"></span><span id="scale-line" aria-hidden="true"></span></div>
+        <div class="map-credit"><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · TIGER/Line · Miami-Dade</div>
+        <aside aria-labelledby="mode">
+          <div class="aside-title"><h1 id="mode">Search area</h1><button id="source-button" class="quiet" aria-label="Data and methods">ⓘ</button></div>
+          <div id="parcel-tools" hidden>
+            <div id="folio-record-tools" hidden>
+              <label id="folio-record-control" class="fit-controls">
+                Same parcel group
+                <select id="folio-record"></select>
+              </label>
+              <button id="folio-compare" type="button" aria-pressed="false" aria-controls="folio-comparison">Compare records</button>
+            </div>
+            <div class="view-switch" role="group" aria-label="Parcel analysis views">
+              <button id="fit-view" aria-pressed="true">Station Fit</button>
+              <button id="walk-view" aria-pressed="false">Walk Coverage</button>
+            </div>
+            <div id="fit-controls" class="fit-controls">
+              <label>Demand scenario
+                <select id="fit-scenario"><option value="base">Baseline · 3 berths</option><option value="growth">Growth · 5 berths (114.3 ft)</option><option value="short">Compact · 5 berths (93.5 ft)</option></select>
+              </label>
+              <label>Test inset per edge
+                <select id="fit-inset"><option value="0">0 ft · Gross lot</option><option value="0.5" selected>1.64 ft</option><option value="1">3.28 ft</option><option value="2">6.56 ft</option></select>
+              </label>
+              <label class="retention-control">
+                <span>Keep existing buildings</span><input type="checkbox" id="retain-buildings" checked>
+              </label>
+            </div>
+          </div>
+          <dl id="metrics" aria-live="polite"></dl>
+          <div id="folio-comparison" aria-live="polite" hidden></div>
+        </aside>
+      </div>
+    </section>
+  </div>
+</main>
+<dialog id="map-help" aria-labelledby="map-help-title">
+  <form method="dialog"><button class="quiet">Close ×</button></form>
+  <h2 id="map-help-title">How to use PlotHop</h2>
+  <ol class="help-steps">
+    <li>Drag the search circle or adjust its radius. Select a purple parcel to open Walk Coverage.</li>
+    <li>Switch to Station Fit to test station footprints, parcel insets, and building retention.</li>
+    <li>In Walk Coverage, bright purple lines show reachable paths, pale purple fills show connected blocks, and the cyan diamond marks the modeled starting point.</li>
+  </ol>
+  <p>The dashed circle is the fixed ½-mi walk reference. Metrics marked “Needs verification” require more evidence.</p>
+</dialog>
+<dialog id="sources">
+  <form method="dialog"><button class="quiet">Close ×</button></form>
+  <h2>Data and methods</h2>
+  <section id="fit-review" aria-labelledby="fit-review-title" hidden>
+    <h3 id="fit-review-title">Station fit review</h3>
+    <p id="short-reference" hidden>Compact footprint sensitivity test</p>
+    <dl id="fit-review-metrics"></dl>
+  </section>
+  <section id="walk-review" aria-labelledby="walk-review-title" hidden>
+    <h3 id="walk-review-title">Walk coverage review</h3>
+    <dl id="walk-review-metrics"></dl>
+  </section>
+  <p>Resident estimates use 2020–2024 ACS B01003 block group data. Job estimates use 2023 LODES WAC workplace counts at the census block level.</p>
+  <p>Resident estimates use the share of each ACS block group’s land inside the search circle, with mapped TIGER/Line water removed from both the overlap and the block group area. A fully water-covered circle within data coverage returns zero estimated residents. Job estimates use the share of each workplace census block’s full area inside the circle. Mapped water is not removed from the job-area calculation. Results need verification where the circle extends beyond data coverage. Gray parcels provide map context. Purple highlights show initial footprint candidates plus the B/C comparison sites. Each parcel record counts once if its geometry intersects or just touches the search circle. Only the part inside the circle is highlighted. Multiple records with the same parcel group can count separately. Regional candidates use the part of each parcel outside mapped TIGER/Line water. The initial screen applies a 1.64 ft test inset to that land and excludes mapped buildings. Engineering feasibility still needs verification.</p>
+  <section id="search-review" aria-labelledby="search-review-title">
+    <h3 id="search-review-title">Search area review</h3>
+    <dl id="search-review-metrics"></dl>
+    <p>Historical pedestrian counts come from a TPO field survey on Tuesdays in May 2016, 4–6 p.m. local time. Totals cover only recorded crossings inside the search area. Recent pedestrian and time-of-day transit boarding and alighting counts need verification.</p>
+    <p><a href="https://www.miamidadetpo.org/library/studies/little-havana-bicycle-pedestrian-mobility-plan-2016-06.pdf#page=118">TPO count tables · PDF pp. 118–119</a></p>
+  </section>
+  <p id="fit-method" hidden>Regional station fit uses parcel land outside mapped TIGER/Line water. Station fit tests a 49.2 ft wide rectangle. Baseline and growth assume 120 and 210 vehicle service events per hour, respectively, at 45 events per berth per hour. Insets are sensitivity inputs. The compact 93.5 ft case uses a dimension from a platform detail. For site C, the upper bound on turning depth subtracts station length from the available north–south depth. Guideway width, transitions and vehicle swept path still need verification. Keeping existing buildings excludes mapped county building footprints. Actual setbacks, parking, utilities, construction clearances and guideway connections still need verification.</p>
+  <p id="walk-method" hidden>The fixed ½-mi reference circle defines the analysis area. Within it, modeled reachability uses a 15-minute network budget, an assumed speed of 2.68 mph, a proxy entrance, and a 30-second wait at each tagged signalized crossing. At a map scale of 500 ft or closer, yellow rings mark mapped crossing endpoints that connect to a pedestrian path. Landings within 5 ft of a basemap road centerline are hidden pending verification. Crossing-point counts use the original records. The dashed access link is provisional. Supplemental links use county sidewalk inventory and public shared-use paths with a 114.8 ft connection limit. Entrances, crossings and accessibility still need verification. U.S. DOT uses a ½-mi pedestrian catchment benchmark for certain transit eligibility analyses. <a href="https://www.transportation.gov/buildamerica/TOD/faqs">U.S. DOT TOD guidance</a></p>
+  <p id="walk-pilot-method" hidden>For regional candidates, the denominator is all 2020 census blocks with a representative land point inside the fixed reference circle, including blocks with unverified access. The numerator counts blocks whose representative point can reach a mapped path within 114.8 ft without crossing mapped roads or water and whose total walk, including that connection, is within 15 minutes. Residents are allocated by ACS block group land area and modeled on an approximately 66 ft grid. Where no grid point samples an intersected portion of a block group, those residents need verification.</p>
+  <p><a href="https://data.census.gov/table/ACSDT5Y2024.B01003">Census ACS</a> · <a href="https://lehd.ces.census.gov/data/">Census LODES</a></p>
+</dialog>
+<dialog id="parcel-picker" aria-labelledby="parcel-picker-title">
+  <form method="dialog"><button class="quiet">Close ×</button></form>
+  <h2 id="parcel-picker-title">Choose a parcel record</h2>
+  <div id="parcel-choices"></div>
+</dialog>
+<dialog id="count-detail">
+  <form method="dialog"><button class="quiet">Close ×</button></form>
+  <h2 id="count-name"></h2>
+  <p id="count-value"></p>
+  <p id="count-coverage"></p>
+  <p><a id="count-source" href="https://www.miamidadetpo.org/library/studies/little-havana-bicycle-pedestrian-mobility-plan-2016-06.pdf">TPO count tables</a></p>
+</dialog>
+<dialog id="pending-block-detail" aria-labelledby="pending-block-title">
+  <form method="dialog"><button class="quiet">Close ×</button></form>
+  <h2 id="pending-block-title">Block access needs verification</h2>
+  <p id="pending-block-id"></p>
+  <p id="pending-block-reason"></p>
+  <p id="pending-block-distance"></p>
+  <p id="pending-block-review" hidden></p>
+  <p>Distance and barrier checks use a straight-line connection from a representative point on land in the block to the nearest mapped pedestrian path.</p>
+</dialog>
+</body>
+</html>
