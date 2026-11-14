@@ -2,6 +2,10 @@
 
 PlotHop is an interactive transit site exploration prototype. Move the search circle, review resident and job estimates, select a candidate parcel, and switch between Walk Coverage and Station Fit.
 
+## Demo video
+
+[Watch the 60-second walkthrough](https://tainingty.github.io/PlotHop/PlotHop_60s_EN_Captioned.mp4) with English captions and no voiceover.
+
 ## Run locally
 
 ```sh
