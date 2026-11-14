@@ -46,8 +46,8 @@ const narrowMap = window.matchMedia('(max-width: 700px)');
 
 function mapInsets() {
   return narrowMap.matches
-    ? { right: 0, bottom: map.clientHeight * .34 + 24 }
-    : { right: $('aside').offsetWidth + 28, bottom: 0 };
+    ? { right: 0, bottom: 0 }
+    : { right: $('.map-side').offsetWidth + 28, bottom: 0 };
 }
 
 function framedWidth(horizontal, vertical) {
@@ -122,6 +122,10 @@ function intersectsCircle(parcel) {
   return inside;
 }
 
+const primaryMetrics = new Set([
+  'Candidate and comparison parcels', 'Modeled block connectivity', 'Modeled footprint fit'
+]);
+
 function metrics(rows, target = $('#metrics')) {
   target.replaceChildren(...rows.map(([label, value]) => {
     const row = document.createElement('div');
@@ -130,6 +134,7 @@ function metrics(rows, target = $('#metrics')) {
     title.textContent = label;
     result.textContent = value;
     if (value.endsWith('Needs verification')) result.className = 'pending';
+    if (target.id === 'metrics' && primaryMetrics.has(label)) row.classList.add('primary-metric');
     row.append(title, result);
     return row;
   }));
@@ -143,6 +148,10 @@ function drawSearch() {
     circle.setAttribute('r', search.radius);
   }
   $('#circle-handle').setAttribute('d', 'M' + (x - 14) + ',' + y + 'h28M' + x + ',' + (y - 14) + 'v28');
+  const radiusInput = $('#radius');
+  const progress = (Number(radiusInput.value) - Number(radiusInput.min)) /
+    (Number(radiusInput.max) - Number(radiusInput.min));
+  radiusInput.style.setProperty('--radius-progress', (progress * 100) + '%');
   $('#radius-value').textContent = number(search.radius / METERS_PER_FOOT) + ' ft';
   let count = 0;
   for (const candidate of candidateButtons) {
@@ -705,6 +714,7 @@ map.addEventListener('pointermove', event => {
   const dx = (event.clientX - drag.x) * scale;
   const dy = (event.clientY - drag.y) * scale;
   if (drag.movesCircle) {
+    clearCityHighlight();
     search.center = [drag.center[0] + dx, drag.center[1] + dy];
     drawSearch();
   } else {
@@ -721,6 +731,7 @@ searchCircle.addEventListener('keydown', event => {
   const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
   if (!direction) return;
   event.preventDefault();
+  clearCityHighlight();
   search.center = search.center.map((value, i) => value + 80 * METERS_PER_FOOT * direction[i]);
   drawSearch();
 });
@@ -730,9 +741,69 @@ const middle = data.parcels[0].point.map((value, i) => (value + data.parcels[1].
 setView(...middle, framedWidth(3200, 2860));
 drawSearch();
 
+const locationControl = $('#location');
+const locationToggle = $('#location-toggle');
+const locationOptions = $('#location-options');
+
+function setLocationOpen(open) {
+  locationToggle.setAttribute('aria-expanded', String(open));
+  locationOptions.inert = !open;
+}
+
+locationToggle.onclick = () => setLocationOpen(locationOptions.inert);
+document.addEventListener('click', event => {
+  if (!locationControl.contains(event.target)) setLocationOpen(false);
+});
+locationControl.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || locationOptions.inert) return;
+  event.preventDefault();
+  locationToggle.focus();
+  setLocationOpen(false);
+});
+
+const mapLegends = $('#map-legends');
+const detailLegendToggle = $('#detail-legend-toggle');
+const summarySwitch = $('#summary-switch');
+const legendSwitch = $('#legend-switch');
+
+function setLegendOpen(open) {
+  mapLegends.hidden = !open;
+  $('#map-summary').hidden = narrowMap.matches && open;
+  detailLegendToggle.setAttribute('aria-expanded', String(open));
+  summarySwitch.setAttribute('aria-pressed', String(!open));
+  legendSwitch.setAttribute('aria-pressed', String(open));
+}
+
+function syncLegendLayout() {
+  const mobile = narrowMap.matches;
+  detailLegendToggle.hidden = mobile;
+  $('#mobile-map-switch').hidden = !mobile;
+  setLegendOpen(!mapLegends.hidden);
+}
+
+detailLegendToggle.onclick = () => setLegendOpen(mapLegends.hidden);
+summarySwitch.onclick = () => setLegendOpen(false);
+legendSwitch.onclick = () => setLegendOpen(true);
+$('.map-stage').addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || mapLegends.hidden) return;
+  const toggle = narrowMap.matches ? legendSwitch : detailLegendToggle;
+  if (event.target !== toggle && !mapLegends.contains(event.target)) return;
+  event.preventDefault();
+  setLegendOpen(false);
+  (narrowMap.matches ? summarySwitch : toggle).focus();
+});
+narrowMap.addEventListener('change', syncLegendLayout);
+syncLegendLayout();
+
+function clearCityHighlight() {
+  locationOptions.querySelector('.city-jump.is-current')?.classList.remove('is-current');
+}
+
 for (const [id, center] of [['jump-miami', downtown], ['jump-beach', beach]]) {
   if (!center) continue;
-  $('#' + id).onclick = () => {
+  $('#' + id).onclick = event => {
+    clearCityHighlight();
+    event.currentTarget.classList.add('is-current');
     search.center = [...center];
     setView(...center, framedWidth(3200, 2860));
     drawSearch();

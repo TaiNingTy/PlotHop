@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#110f19">
 <title>PlotHop</title>
-<link rel="stylesheet" href="styles.css?v=35">
+<link rel="stylesheet" href="styles.css?v=43">
 <script defer src="data.js?v=2.2"></script>
 <script defer src="demography.js?v=3"></script>
 <script defer src="region.js?v=2"></script>
@@ -27,7 +27,7 @@
 <script defer src="block-distance-audit.js?v=2"></script>
 <script defer src="crossing-display.js?v=1"></script>
 <script defer src="search-residents.js?v=1"></script>
-<script defer src="app.js?v=48"></script>
+<script defer src="app.js?v=54"></script>
 </head>
 <body>
 <header class="bar">
@@ -43,70 +43,99 @@
           <label for="radius">Search radius</label>
           <input id="radius" type="range" min="500" max="4000" step="100" value="1000">
           <output for="radius" id="radius-value">1,000 ft</output>
-          <button id="jump-miami" class="quiet city-jump" type="button">Miami</button>
-          <button id="jump-beach" class="quiet city-jump" type="button">Miami Beach</button>
-        </div>
-        <button class="quiet" id="back" hidden>← Back to search</button>
-        <div class="map-key" id="map-key" data-mode="search">Candidate parcels</div>
-        <ul class="map-key walk-legend" id="walk-legend" aria-label="Walk coverage legend" hidden>
-          <li><span class="legend-route" aria-hidden="true"></span>Reachable paths (modeled)</li>
-          <li id="walk-legend-crossing"><label><input type="checkbox" id="show-walk-crossings" autocomplete="off"><span class="legend-crossing" aria-hidden="true"></span>Mapped crossing landings</label></li>
-          <li id="walk-legend-blocks"><span class="legend-blocks" aria-hidden="true"></span>Connected blocks (modeled)</li>
-          <li id="walk-legend-pending" hidden><label><input type="checkbox" id="show-pending-blocks" autocomplete="off"><span class="legend-pending" aria-hidden="true"></span>Unverified blocks</label></li>
-        </ul>
-        <ul class="map-key basemap-legend" aria-label="Basemap legend">
-          <li class="search-candidate-key"><span class="key-candidates" aria-hidden="true"></span>Candidate parcels</li>
-          <li><span class="key-roads" aria-hidden="true"><span class="key-major-roads"></span><span class="key-local-roads"></span></span>Roads</li>
-          <li><span class="key-water" aria-hidden="true"></span>Water</li>
-          <li><span class="key-parcels" aria-hidden="true"></span>Boundaries</li>
-        </ul>
-      </div>
-      <div class="map-view">
-        <svg id="map" viewBox="0 0 8000 5700" aria-label="Miami and Miami Beach streets and parcels" xmlns="http://www.w3.org/2000/svg">
-          <defs><clipPath id="search-clip"><circle id="clip-circle"/></clipPath></defs>
-          <rect x="-30000" y="-30000" width="60000" height="60000" fill="#171521"/>
-          <path id="water"/><path id="local-roads"/><path id="major-roads"/><g id="regional-parcels"/><path id="parcel-context" hidden=""/>
-          <g id="search-layer">
-            <circle id="search-circle" tabindex="0" aria-label="Search circle. Use arrow keys to move it."/>
-            <g id="candidate-layer" clip-path="url(#search-clip)"></g>
-            <g id="count-points" hidden=""></g>
-            <path id="circle-handle" aria-hidden="true"/>
-          </g>
-          <g id="walk-layer"></g>
-          <g id="folio-map-comparison"></g>
-        </svg>
-        <div class="map-controls" aria-label="Map zoom"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button></div>
-        <div class="map-scale" aria-label="Map scale"><span id="scale-label"></span><span id="scale-line" aria-hidden="true"></span></div>
-        <div class="map-credit"><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · TIGER/Line · Miami-Dade</div>
-        <aside aria-labelledby="mode">
-          <div class="aside-title"><h1 id="mode">Search area</h1><button id="source-button" class="quiet" aria-label="Data and methods">ⓘ</button></div>
-          <div id="parcel-tools" hidden>
-            <div id="folio-record-tools" hidden>
-              <label id="folio-record-control" class="fit-controls">
-                Same parcel group
-                <select id="folio-record"></select>
-              </label>
-              <button id="folio-compare" type="button" aria-pressed="false" aria-controls="folio-comparison">Compare records</button>
-            </div>
-            <div class="view-switch" role="group" aria-label="Parcel analysis views">
-              <button id="fit-view" aria-pressed="true">Station Fit</button>
-              <button id="walk-view" aria-pressed="false">Walk Coverage</button>
-            </div>
-            <div id="fit-controls" class="fit-controls">
-              <label>Demand scenario
-                <select id="fit-scenario"><option value="base">Baseline · 3 berths</option><option value="growth">Growth · 5 berths (114.3 ft)</option><option value="short">Compact · 5 berths (93.5 ft)</option></select>
-              </label>
-              <label>Test inset per edge
-                <select id="fit-inset"><option value="0">0 ft · Gross lot</option><option value="0.5" selected>1.64 ft</option><option value="1">3.28 ft</option><option value="2">6.56 ft</option></select>
-              </label>
-              <label class="retention-control">
-                <span>Keep existing buildings</span><input type="checkbox" id="retain-buildings" checked>
-              </label>
+          <div class="location" id="location">
+            <button id="location-toggle" type="button" aria-expanded="false" aria-controls="location-options">Location</button>
+            <div id="location-options" class="location-options" inert>
+              <button id="jump-miami" class="city-jump" type="button">Miami</button>
+              <button id="jump-beach" class="city-jump" type="button">Miami Beach</button>
             </div>
           </div>
-          <dl id="metrics" aria-live="polite"></dl>
-          <div id="folio-comparison" aria-live="polite" hidden></div>
-        </aside>
+        </div>
+        <button class="quiet" id="back" hidden>← Back to search</button>
+
+      </div>
+      <div class="map-stage">
+        <div class="map-view">
+          <svg id="map" viewBox="0 0 8000 5700" aria-label="Miami and Miami Beach streets and parcels" xmlns="http://www.w3.org/2000/svg">
+            <defs><clipPath id="search-clip"><circle id="clip-circle"/></clipPath></defs>
+            <rect x="-30000" y="-30000" width="60000" height="60000" fill="#171521"/>
+            <path id="water"/><path id="local-roads"/><path id="major-roads"/><g id="regional-parcels"/><path id="parcel-context" hidden=""/>
+            <g id="search-layer">
+              <circle id="search-circle" tabindex="0" aria-label="Search circle. Use arrow keys to move it."/>
+              <g id="candidate-layer" clip-path="url(#search-clip)"></g>
+              <g id="count-points" hidden=""></g>
+              <path id="circle-handle" aria-hidden="true"/>
+            </g>
+            <g id="walk-layer"></g>
+            <g id="folio-map-comparison"></g>
+          </svg>
+          <div class="map-controls" aria-label="Map zoom"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button></div>
+        </div>
+        <div class="map-footer">
+          <div class="map-scale" aria-label="Map scale"><span id="scale-label"></span><span id="scale-line" aria-hidden="true"></span></div>
+          <div class="map-credit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> · TIGER/Line · Miami-Dade</div>
+        </div>
+        <div class="map-side">
+          <div id="mobile-map-switch" role="group" aria-label="Map information" hidden>
+            <button type="button" id="summary-switch" aria-controls="map-summary" aria-pressed="true">Summary</button>
+            <button type="button" id="legend-switch" aria-controls="map-legends" aria-pressed="false">Legend</button>
+          </div>
+          <aside id="map-summary" aria-labelledby="mode">
+            <div class="aside-title">
+              <h1 id="mode">Search area</h1>
+              <div class="aside-tools">
+                <button type="button" id="detail-legend-toggle" aria-controls="map-legends" aria-expanded="false" hidden>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path d="m8 2 6 3.5L8 9 2 5.5 8 2Zm-6 6 6 3.5L14 8M2 10.5 8 14l6-3.5"/>
+                  </svg>
+                  Legend
+                </button>
+                <button id="source-button" class="quiet" aria-label="Data and methods">ⓘ</button>
+              </div>
+            </div>
+            <div id="parcel-tools" hidden>
+              <div id="folio-record-tools" hidden>
+                <label id="folio-record-control" class="fit-controls">
+                  Same parcel group
+                  <select id="folio-record"></select>
+                </label>
+                <button id="folio-compare" type="button" aria-pressed="false" aria-controls="folio-comparison">Compare records</button>
+              </div>
+              <div class="view-switch" role="group" aria-label="Parcel analysis views">
+                <button id="fit-view" aria-pressed="true">Station Fit</button>
+                <button id="walk-view" aria-pressed="false">Walk Coverage</button>
+              </div>
+              <div id="fit-controls" class="fit-controls">
+                <label>Demand scenario
+                  <select id="fit-scenario"><option value="base">Baseline · 3 berths</option><option value="growth">Growth · 5 berths (114.3 ft)</option><option value="short">Compact · 5 berths (93.5 ft)</option></select>
+                </label>
+                <label>Test inset per edge
+                  <select id="fit-inset"><option value="0">0 ft · Gross lot</option><option value="0.5" selected>1.64 ft</option><option value="1">3.28 ft</option><option value="2">6.56 ft</option></select>
+                </label>
+                <label class="retention-control">
+                  <span>Keep existing buildings</span><input type="checkbox" id="retain-buildings" checked>
+                </label>
+              </div>
+            </div>
+            <dl id="metrics" aria-live="polite"></dl>
+            <div id="folio-comparison" aria-live="polite" hidden></div>
+          </aside>
+          <div id="map-legends" class="map-legends" hidden>
+            <div class="map-key" id="map-key" data-mode="search">Candidate parcels</div>
+            <ul class="map-key walk-legend" id="walk-legend" aria-label="Walk coverage legend" hidden>
+              <li><span class="legend-route" aria-hidden="true"></span>Reachable paths (modeled)</li>
+              <li id="walk-legend-crossing"><label><input type="checkbox" id="show-walk-crossings" autocomplete="off"><span class="legend-crossing" aria-hidden="true"></span>Mapped crossing landings</label></li>
+              <li id="walk-legend-blocks"><span class="legend-blocks" aria-hidden="true"></span>Connected blocks (modeled)</li>
+              <li id="walk-legend-pending" hidden><label><input type="checkbox" id="show-pending-blocks" autocomplete="off"><span class="legend-pending" aria-hidden="true"></span>Unverified blocks</label></li>
+            </ul>
+            <ul class="map-key basemap-legend" aria-label="Basemap legend">
+              <li class="search-candidate-key"><span class="key-candidates" aria-hidden="true"></span>Candidate parcels</li>
+              <li><span class="key-roads" aria-hidden="true"><span class="key-major-roads"></span><span class="key-local-roads"></span></span>Roads</li>
+              <li><span class="key-water" aria-hidden="true"></span>Water</li>
+              <li><span class="key-parcels" aria-hidden="true"></span>Boundaries</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   </div>
